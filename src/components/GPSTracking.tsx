@@ -84,7 +84,7 @@ export default function GPSTracking() {
     if (!map || !layer) return;
 
     layer.clearLayers();
-    const bounds: L.LatLngBoundsExpression[] = [];
+    const bounds: L.LatLngExpression[] = [];
     const now = Date.now();
 
     gpsTrackings.forEach(tr => {

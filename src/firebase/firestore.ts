@@ -69,6 +69,7 @@ export interface GPSTracking {
   driverId: string;     // staff id
   lat: number;
   lng: number;
+  accuracy?: number; // optional GPS accuracy in meters
   timestamp: string;    // ISO
   trackingStatus: GPSTrackingStatus;
 }
