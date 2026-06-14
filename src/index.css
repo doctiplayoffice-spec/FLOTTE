@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f1f5f9; /* Slate 100 light background */
+    color: #0f172a; /* Slate 900 text */
+    overflow-x: hidden;
+  }
+}
+
+/* Administrative layout & Excel table settings */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background-color: #ffffff;
+}
+
+.admin-table th {
+  background-color: #e2e8f0; /* Slate 200 header */
+  color: #334155; /* Slate 700 text */
+  font-weight: 700;
+  border: 1px solid #cbd5e1; /* Slate 300 border */
+  padding: 6px 8px;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+.admin-table td {
+  border: 1px solid #e2e8f0; /* Slate 200 border */
+  padding: 6px 8px;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.admin-table tr:nth-child(even) {
+  background-color: #f8fafc; /* Slate 50 row striping */
+}
+
+.admin-table tr:hover {
+  background-color: #f1f5f9; /* Slate 100 hover row */
+}
+
+/* Administrative Form Fields */
+.admin-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569; /* Slate 600 */
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+
+.admin-input {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 12px;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #0f172a;
+  outline: none;
+}
+
+.admin-input:focus {
+  border-color: #2563eb; /* Blue 600 */
+}
+
+.admin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  background-color: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  transition: all 100ms;
+}
+
+.admin-btn:hover {
+  background-color: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.admin-btn-primary {
+  background-color: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+}
+
+.admin-btn-primary:hover {
+  background-color: #1d4ed8;
+  border-color: #1e40af;
+}
+
+.admin-btn-danger {
+  background-color: #dc2626;
+  color: #ffffff;
+  border-color: #b91c1c;
+}
+
+.admin-btn-danger:hover {
+  background-color: #b91c1c;
+  border-color: #991b1b;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 0px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* GPS pulsing indicator */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+.animate-pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+/* Leaflet z-index fixes */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 10 !important;
+}
+.leaflet-control {
+  z-index: 10 !important;
+}
+
+/* Print Styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  header, aside, button, .no-print {
+    display: none !important;
+  }
+  
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
