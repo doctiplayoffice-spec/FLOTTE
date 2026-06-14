@@ -109,7 +109,7 @@ export default function GPSTracking() {
           <strong>Mission :</strong> ${mission?.num || ''}<br/>
           <strong>Latitude :</strong> ${lat.toFixed(6)}<br/>
           <strong>Longitude :</strong> ${lng.toFixed(6)}<br/>
-          <strong>Précision :</strong> ±${Math.round(tr.accuracy)} m<br/>
+          <strong>Précision :</strong> ±${tr.accuracy !== undefined ? Math.round(tr.accuracy) : 'N/A'} m<br/>
           <strong>Dernière mise à jour :</strong> ${formatDate(tr.timestamp)}<br/>
           <strong>Statut GPS :</strong> ${tr.trackingStatus || 'unknown'}
         </div>`;
