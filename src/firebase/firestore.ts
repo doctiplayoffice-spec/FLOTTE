@@ -137,7 +137,7 @@ const getStore = <T>(key: string, initial: T[]): T[] => {
       localStorage.setItem(key, JSON.stringify(initial));
       return initial;
     }
-    if (key === 'fleet_db_personnel' && parsed.length > 0 && parsed.some((x: any) => x.firstname === 'Ahmed' || x.firstname === 'Fatima' || x.firstname === 'Rachid')) {
+    if (key === 'fleet_db_personnel' && parsed.length > 0 && parsed.some((x: any) => !x.matricule)) {
       localStorage.setItem(key, JSON.stringify(initial));
       return initial;
     }
