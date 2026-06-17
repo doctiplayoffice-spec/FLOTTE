@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import Modal from './common/Modal';
 import { MOROCCAN_CITIES } from '../models/Cities';
+import { isLicenceValid, VEHICLE_REQUIRED_LICENCE } from '../models/Vehicle';
 
 export default function Missions() {
   const { 
@@ -60,7 +61,7 @@ export default function Missions() {
   const selectedVehicle = vehicles.find(v => v.plate === vehicleId);
   const eligibleStaff = availableStaff.filter(p => {
     if (!selectedVehicle) return true;
-    return p.licenceCategories && p.licenceCategories.includes(selectedVehicle.category);
+    return isLicenceValid(p.licenceCategories, selectedVehicle.category);
   });
 
   const handleAddSubmit = async (e: React.FormEvent) => {
@@ -74,8 +75,9 @@ export default function Missions() {
 
     const selectedDriver = personnel.find(p => p.id === personnelId);
     if (selectedVehicle && selectedDriver) {
-      if (!selectedDriver.licenceCategories || !selectedDriver.licenceCategories.includes(selectedVehicle.category)) {
-        setErr(`L'agent sélectionné ne possède pas le permis requis (${selectedVehicle.category}) pour conduire ce véhicule.`);
+      if (!isLicenceValid(selectedDriver.licenceCategories, selectedVehicle.category)) {
+        const reqLic = VEHICLE_REQUIRED_LICENCE[selectedVehicle.category];
+        setErr(`L'agent sélectionné ne possède pas le permis requis (${reqLic}) pour conduire ce véhicule.`);
         return;
       }
     }
@@ -484,7 +486,7 @@ export default function Missions() {
                 <span className="text-[10px] text-rose-500 mt-1 block">Aucun agent disponible !</span>
               ) : selectedVehicle && eligibleStaff.length === 0 ? (
                 <span className="text-[10px] text-rose-500 mt-1 block font-bold animate-pulse">
-                  ⚠ Aucun agent disponible ne possède le permis {selectedVehicle.category} requis !
+                  ⚠ Aucun agent disponible ne possède le permis {VEHICLE_REQUIRED_LICENCE[selectedVehicle.category]} requis !
                 </span>
               ) : null}
             </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import { isLicenceValid } from '../models/Vehicle';
 
 type ImportButtonProps = {
   label?: string;
@@ -19,7 +20,7 @@ export const ImportButton = ({
   onUploadComplete,
   buttonClass,
 }: ImportButtonProps) => {
-  const { addNewVehicle, addNewStaff, addNewMission } = useApp();
+  const { addNewVehicle, addNewStaff, addNewMission, vehicles, personnel } = useApp();
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +68,7 @@ export const ImportButton = ({
               plate: `PR-${Math.floor(10000 + Math.random() * 90000)}-D-6`,
               brand: 'Renault',
               model: 'Master L2H2',
-              category: 'VL',
+              category: 'VLTT',
               mileage: 45200,
               lastMaint: '2026-05-10',
               nextMaint: '2026-11-10',
@@ -81,7 +82,7 @@ export const ImportButton = ({
               plate: `PR-${Math.floor(10000 + Math.random() * 90000)}-A-7`,
               brand: 'Peugeot',
               model: 'Partner',
-              category: 'VL',
+              category: 'FOURGONETTE',
               mileage: 23100,
               lastMaint: '2026-06-01',
               nextMaint: '2026-12-01',
@@ -116,9 +117,13 @@ export const ImportButton = ({
             setSuccessMessage(`Importation réussie ! 2 conducteurs/agents ajoutés depuis ${file.name}`);
           } else if (sectionType === 'missions') {
             // Add a realistic mission using existing drivers/vehicles
+            const targetVeh = vehicles.find(v => v.status === 'Disponible');
+            const targetPlate = targetVeh?.plate || '10001-A-SEM';
+            const targetCategory = targetVeh?.category || 'CARGO';
+            const targetStaff = personnel.find(s => s.status === 'Présent' && isLicenceValid(s.licenceCategories, targetCategory)) || { id: 's-temp' };
             await addNewMission({
-              vehicleId: '12345-A-6',
-              personnelId: 's-3', // Rachid Amrani
+              vehicleId: targetPlate,
+              personnelId: targetStaff.id,
               service: 'Logistique',
               departureDate: new Date().toISOString().split('T')[0],
               returnDatePlanned: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString().split('T')[0],

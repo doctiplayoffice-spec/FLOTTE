@@ -37,7 +37,7 @@ export default function Vehicles() {
   const [plate, setPlate] = useState('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
-  const [category, setCategory] = useState<VehicleCategory>('VL');
+  const [category, setCategory] = useState<VehicleCategory>('CARGO');
   const [mileage, setMileage] = useState('');
   const [lastMaint, setLastMaint] = useState('');
   const [nextMaint, setNextMaint] = useState('');
@@ -79,7 +79,7 @@ export default function Vehicles() {
     setNextInspection('');
     setInsuranceExpiry('');
     setNextMaintMileage('');
-    setCategory('VL');
+    setCategory('CARGO');
     setIsAddOpen(false);
   };
 
@@ -223,7 +223,7 @@ export default function Vehicles() {
               onChange={e => setCategoryFilter(e.target.value)}
             >
               <option value="All">-- Toutes les catégories --</option>
-              {(['VL', 'PL', 'SR', 'TC', 'PC', 'RE'] as VehicleCategory[]).map(cat => (
+              {(Object.keys(VEHICLE_CATEGORY_LABELS) as VehicleCategory[]).map(cat => (
                 <option key={cat} value={cat}>{VEHICLE_CATEGORY_LABELS[cat]}</option>
               ))}
             </select>

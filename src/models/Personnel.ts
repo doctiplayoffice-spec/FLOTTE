@@ -1,5 +1,14 @@
 // src/models/Personnel.ts
-import type { VehicleCategory } from './Vehicle';
+export type LicenceCategory = 'VL' | 'PL' | 'SR' | 'TC' | 'PC' | 'MOTO';
+
+export const LICENCE_CATEGORY_LABELS: Record<LicenceCategory, string> = {
+  VL: 'Véhicule léger (VL)',
+  PL: 'Poids lourd (PL)',
+  SR: 'Semi-remorque (SR)',
+  TC: 'Transport en commun (TC)',
+  PC: 'Porte-char (PC)',
+  MOTO: 'Moto (MOTO)',
+};
 
 /**
  * Grades militaires — du plus bas au plus élevé.
@@ -67,8 +76,8 @@ export interface Personnel {
 
   // ── Qualification permis ────────────────────────────────────────
   // Un même homme peut détenir plusieurs permis.
-  // Correspond exactement aux catégories véhicules → filtre chauffeur dans le BTC.
-  licenceCategories: VehicleCategory[];
+  // Correspond aux catégories de permis → filtre chauffeur dans le BTC.
+  licenceCategories: LicenceCategory[];
   licenceExpiry?: string;   // ISO date — date d'expiration du permis principal
 
   // ── Situation journalière (mise à jour par le service des effectifs) ─

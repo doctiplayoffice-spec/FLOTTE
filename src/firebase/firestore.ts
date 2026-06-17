@@ -1,7 +1,7 @@
 // Mock Firestore Implementation with LocalStorage and Event Pub/Sub
 import { getCurrentUser } from './auth';
 
-import { Vehicle } from '../models/Vehicle';
+import { Vehicle, VehicleCategory } from '../models/Vehicle';
 import { Personnel } from '../models/Personnel';
 
 export interface Mission {
@@ -63,97 +63,64 @@ export interface MileageLog {
   submittedAt: string;  // ISO
 }
 
-// Initial mock data templates
-const INITIAL_VEHICLES: Vehicle[] = [
-  { 
-    id: 'v-1', 
-    plate: '12345-A-6', 
-    brand: 'Scania', 
-    model: 'R500 V8', 
-    category: 'PL', 
-    mileage: 124500, 
-    status: 'Disponible', 
-    lastMaint: '2026-05-15', 
-    nextMaint: '2026-11-15', 
-    notes: 'Rien à signaler, vidange effectuée',
-    nextInspection: '2026-07-10',
-    insuranceExpiry: '2026-06-25',
-    nextMaintMileage: 125300,
-    statusChangedDate: '2026-06-13'
-  },
-  { 
-    id: 'v-2', 
-    plate: '67890-B-26', 
-    brand: 'Mercedes', 
-    model: 'Sprinter 314', 
-    category: 'TC', 
-    mileage: 89300, 
-    status: 'En mission', 
-    lastMaint: '2026-06-01', 
-    nextMaint: '2026-12-01', 
-    notes: 'Voyant climatisation à surveiller',
-    nextInspection: '2026-09-15',
-    insuranceExpiry: '2026-11-20',
-    nextMaintMileage: 95000,
-    statusChangedDate: '2026-06-12'
-  },
-  { 
-    id: 'v-3', 
-    plate: '11223-D-6', 
-    brand: 'Iveco', 
-    model: 'Daily 35S18', 
-    category: 'VL', 
-    mileage: 154800, 
-    status: 'Maintenance', 
-    motif: 'Injecteur défectueux cylindre 3',
-    lastMaint: '2026-02-10', 
-    nextMaint: '2026-06-10', 
-    notes: 'Remplacer rampe injection',
-    nextInspection: '2026-08-01',
-    insuranceExpiry: '2026-12-05',
-    nextMaintMileage: 160000,
-    statusChangedDate: '2026-06-01'
-  },
-  { 
-    id: 'v-4', 
-    plate: '44556-H-6', 
-    brand: 'Renault', 
-    model: 'Zoé E-Tech', 
-    category: 'VL', 
-    mileage: 23100, 
-    status: 'Panne', 
-    motif: 'Panne alternateur signalée par l\'équipe',
-    lastMaint: '2026-04-18', 
-    nextMaint: '2026-10-18', 
-    notes: 'Attente pièces de rechange',
-    nextInspection: '2026-10-18',
-    insuranceExpiry: '2026-10-18',
-    nextMaintMileage: 30000,
-    statusChangedDate: '2026-06-10'
-  }
-];
+const generateVehicles = (): Vehicle[] => {
+  const list: Vehicle[] = [];
+  const specs: { category: VehicleCategory; brand: string; model: string; total: number; dispo: number }[] = [
+    { category: 'SEMI_REMORQUE', brand: 'Scania', model: 'R450 (Semi-remorque)', total: 39, dispo: 26 },
+    { category: 'AUTOCAR_VOLVO', brand: 'Volvo', model: '9700 (Autocar)', total: 10, dispo: 8 },
+    { category: 'AUTOCAR_DAEWOO', brand: 'Daewoo', model: 'BH120 (Autocar)', total: 1, dispo: 0 },
+    { category: 'CARGO', brand: 'Mercedes-Benz', model: 'Actros Cargo', total: 70, dispo: 60 },
+    { category: 'FOURGON', brand: 'Iveco', model: 'Eurocargo Fourgon', total: 1, dispo: 1 },
+    { category: 'DEPANNAGE', brand: 'Renault', model: 'Kerax Dépannage', total: 3, dispo: 2 },
+    { category: 'CCT_EAU', brand: 'MAN', model: 'TGS Citerne Eau', total: 1, dispo: 1 },
+    { category: 'CCT_CARB', brand: 'MAN', model: 'TGS Citerne Carb', total: 2, dispo: 2 },
+    { category: 'TRACTEUR_PC', brand: 'Oshkosh', model: 'M1070 Tracteur PC', total: 39, dispo: 28 },
+    { category: 'FOURGONETTE', brand: 'Peugeot', model: 'Partner (Fourgonnette)', total: 16, dispo: 16 },
+    { category: 'VLTT', brand: 'Toyota', model: 'Land Cruiser (VLTT)', total: 16, dispo: 14 },
+    { category: 'MOTO', brand: 'BMW', model: 'F850 GS (Moto)', total: 16, dispo: 16 },
+    { category: 'RENAULT_EXPRESS', brand: 'Renault', model: 'Express (Utilitaire)', total: 20, dispo: 16 }
+  ];
 
-const INITIAL_PERSONNEL: Personnel[] = [
-  { id: 's-1', matricule: 'M101293', grade: 'Adjudant', firstname: 'Ahmed', lastname: 'Alami', service: 'Logistique', status: 'En mission', licenceCategories: ['VL', 'PL', 'SR'] },
-  { id: 's-2', matricule: 'M991823', grade: 'Commandant', firstname: 'Fatima', lastname: 'Zohra', service: 'Exploitation', status: 'Présent', licenceCategories: ['VL'] },
-  { id: 's-3', matricule: 'M209381', grade: 'Caporal', firstname: 'Rachid', lastname: 'Amrani', service: 'Logistique', status: 'Présent', licenceCategories: ['VL', 'PL'] },
-  { id: 's-4', matricule: 'M492813', grade: 'Adjudant-chef', firstname: 'Khadija', lastname: 'Bennani', service: 'Administration', status: 'Présent', licenceCategories: ['VL'] }
-];
+  let idCounter = 1;
+  specs.forEach(spec => {
+    for (let i = 0; i < spec.total; i++) {
+      const isDispo = i < spec.dispo;
+      const isDetached = (spec.category === 'CARGO' && i === spec.total - 1) || (spec.category === 'TRACTEUR_PC' && i === spec.total - 1);
+      
+      const categoryShort = spec.category.substring(0, 3);
+      const plateNumber = 10000 + idCounter;
+      const plate = `${plateNumber}-A-${spec.category === 'RENAULT_EXPRESS' ? 'VL' : categoryShort}`;
+      
+      const v: Vehicle = {
+        id: `v-${idCounter++}`,
+        plate,
+        brand: spec.brand,
+        model: spec.model,
+        category: spec.category,
+        status: isDispo ? 'Disponible' : (i % 2 === 0 ? 'Panne' : 'Maintenance'),
+        motif: isDispo ? undefined : (i % 2 === 0 ? 'Avarie mécanique signalée' : 'Entretien périodique atelier'),
+        statusChangedDate: '2026-06-15',
+        mileage: Math.floor(25000 + Math.random() * 125000),
+        lastMaint: '2026-04-10',
+        nextMaint: '2026-10-10',
+        nextMaintMileage: 160000,
+        nextInspection: '2026-12-31',
+        insuranceExpiry: '2026-12-31',
+        notes: isDetached ? 'Dont (01) détaché' : undefined
+      };
+      list.push(v);
+    }
+  });
 
-const INITIAL_MISSIONS: Mission[] = [
-  { id: 'm-1', num: 'MS-2026-001', vehicleId: '67890-B-26', personnelId: 's-1', service: 'Logistique', departureDate: '2026-06-12', returnDatePlanned: '2026-06-15', departurePlace: 'Tanger', destination: 'Casablanca', purpose: 'Acheminement pièces détachées', status: 'En cours', notes: 'Faire le plein au retour' },
-  { id: 'm-2', num: 'MS-2026-002', vehicleId: '12345-A-6', personnelId: 's-3', service: 'Logistique', departureDate: '2026-06-08', returnDatePlanned: '2026-06-09', departurePlace: 'Casablanca', destination: 'Marrakech', purpose: 'Transport de transformateur', status: 'Terminée', notes: 'Livraison effectuée avec 10 min d\'avance' }
-];
+  return list;
+};
 
-const INITIAL_MAINTENANCE: MaintenanceRecord[] = [
-  { id: 'mt-1', vehicleId: '11223-D-6', type: 'Corrective', date: '2026-06-12', mileage: 154800, desc: 'Démontage rampe injection et test débit', status: 'En cours' },
-  { id: 'mt-2', vehicleId: '12345-A-6', type: 'Préventive', date: '2026-05-15', mileage: 124500, desc: 'Remplacement filtres et huile moteur', status: 'Terminée' },
-  { id: 'mt-3', vehicleId: '44556-H-6', type: 'Préventive', date: '2026-06-18', mileage: 23100, desc: 'Contrôle réglementaire et test batterie', status: 'Prévue' }
-];
-
+const INITIAL_VEHICLES: Vehicle[] = generateVehicles();
+const INITIAL_PERSONNEL: Personnel[] = [];
+const INITIAL_MISSIONS: Mission[] = [];
+const INITIAL_MAINTENANCE: MaintenanceRecord[] = [];
 const INITIAL_LOGS: ActivityLog[] = [
-  { id: 'l-1', userEmail: 'admin@fleet.com', action: 'Initialisation', target: 'Système', timestamp: new Date(Date.now() - 2 * 3600000).toISOString() },
-  { id: 'l-2', userEmail: 'manager@fleet.com', action: 'Création', target: 'Véhicule 12345-A-6', timestamp: new Date(Date.now() - 3600000).toISOString() }
+  { id: 'l-1', userEmail: 'admin@fleet.com', action: 'Initialisation', target: 'Système', timestamp: new Date().toISOString() }
 ];
 
 // Helper to retrieve database storage structure
@@ -166,19 +133,19 @@ const getStore = <T>(key: string, initial: T[]): T[] => {
   try {
     const parsed = JSON.parse(data);
     // Schema migration/reset check:
-    if (key === 'fleet_db_vehicles' && parsed.length > 0 && (parsed[0].category === undefined || parsed[0].plate === 'AA-123-BB')) {
+    if (key === 'fleet_db_vehicles' && (parsed.length !== 234 || (parsed.length > 0 && ['VL', 'PL', 'SR', 'TC', 'PC', 'RE'].includes(parsed[0].category)))) {
       localStorage.setItem(key, JSON.stringify(initial));
       return initial;
     }
-    if (key === 'fleet_db_personnel' && parsed.length > 0 && (parsed[0].grade === undefined || parsed.some((x: any) => x.status === 'Indisponible') || parsed.some((x: any) => x.firstname === 'Jean'))) {
+    if (key === 'fleet_db_personnel' && parsed.length > 0 && parsed.some((x: any) => x.firstname === 'Ahmed' || x.firstname === 'Fatima' || x.firstname === 'Rachid')) {
       localStorage.setItem(key, JSON.stringify(initial));
       return initial;
     }
-    if (key === 'fleet_db_missions' && parsed.length > 0 && parsed.some((x: any) => x.destination === 'Paris')) {
+    if (key === 'fleet_db_missions' && parsed.length > 0 && parsed.some((x: any) => x.destination === 'Paris' || x.vehicleId === '67890-B-26')) {
       localStorage.setItem(key, JSON.stringify(initial));
       return initial;
     }
-    if (key === 'fleet_db_maintenance' && parsed.length > 0 && parsed.some((x: any) => x.vehicleId === 'EE-789-FF')) {
+    if (key === 'fleet_db_maintenance' && parsed.length > 0 && parsed.some((x: any) => x.vehicleId === 'EE-789-FF' || x.vehicleId === '11223-D-6')) {
       localStorage.setItem(key, JSON.stringify(initial));
       return initial;
     }

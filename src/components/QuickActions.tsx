@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { ShieldAlert } from 'lucide-react';
-import { VehicleCategory, VEHICLE_CATEGORY_LABELS } from '../models/Vehicle';
+import { VehicleCategory, VEHICLE_CATEGORY_LABELS, isLicenceValid, VEHICLE_REQUIRED_LICENCE } from '../models/Vehicle';
 import { MOROCCAN_CITIES } from '../models/Cities';
 
 export default function QuickActions() {
@@ -39,7 +39,7 @@ export default function QuickActions() {
   const [addVehPlate, setAddVehPlate] = useState('');
   const [addVehBrand, setAddVehBrand] = useState('');
   const [addVehModel, setAddVehModel] = useState('');
-  const [addVehType, setAddVehType] = useState<VehicleCategory>('VL');
+  const [addVehType, setAddVehType] = useState<VehicleCategory>('CARGO');
   const [addVehMileage, setAddVehMileage] = useState('');
 
   const triggerSuccess = (msg: string) => {
@@ -131,8 +131,9 @@ export default function QuickActions() {
       const selectedDriver = personnel.find(p => p.id === driverId);
       if (!selectedVeh || !selectedDriver) return triggerError("Erreur ressources.");
 
-      if (!selectedDriver.licenceCategories || !selectedDriver.licenceCategories.includes(selectedVeh.category)) {
-        return triggerError(`L'agent sélectionné ne possède pas le permis requis (${selectedVeh.category}) pour ce véhicule.`);
+      if (!isLicenceValid(selectedDriver.licenceCategories, selectedVeh.category)) {
+        const reqLic = VEHICLE_REQUIRED_LICENCE[selectedVeh.category];
+        return triggerError(`L'agent sélectionné ne possède pas le permis requis (${reqLic}) pour ce véhicule.`);
       }
 
       const newM = await addNewMission({
@@ -335,7 +336,7 @@ export default function QuickActions() {
                   {availableStaff.filter(p => {
                     const selVeh = vehicles.find(v => v.plate === plate);
                     if (!selVeh) return true;
-                    return p.licenceCategories && p.licenceCategories.includes(selVeh.category);
+                    return isLicenceValid(p.licenceCategories, selVeh.category);
                   }).map(p => (
                     <option key={p.id} value={p.id}>{p.grade} {p.lastname} {p.firstname} (Permis: {p.licenceCategories?.join(', ') || 'aucun'})</option>
                   ))}

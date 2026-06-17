@@ -8,8 +8,7 @@ import {
   Edit2
 } from 'lucide-react';
 import Modal from './common/Modal';
-import { Grade, GRADES_RANKS, GRADES_OFFICERS, PersonnelStatus } from '../models/Personnel';
-import { VehicleCategory } from '../models/Vehicle';
+import { Grade, GRADES_RANKS, GRADES_OFFICERS, PersonnelStatus, LicenceCategory, LICENCE_CATEGORY_LABELS } from '../models/Personnel';
 
 export default function PersonnelComponent() {
   const { 
@@ -39,7 +38,7 @@ export default function PersonnelComponent() {
   const [service, setService] = useState('Logistique');
   const [matricule, setMatricule] = useState('');
   const [grade, setGrade] = useState<Grade>('Soldat 2e classe');
-  const [licenceCategories, setLicenceCategories] = useState<VehicleCategory[]>([]);
+  const [licenceCategories, setLicenceCategories] = useState<LicenceCategory[]>([]);
   const [licenceExpiry, setLicenceExpiry] = useState('');
   const [status, setStatus] = useState<PersonnelStatus>('Présent');
   const [statusEndDate, setStatusEndDate] = useState('');
@@ -121,7 +120,7 @@ export default function PersonnelComponent() {
     }
   };
 
-  const handleLicenceCheckboxChange = (cat: VehicleCategory, checked: boolean) => {
+  const handleLicenceCheckboxChange = (cat: LicenceCategory, checked: boolean) => {
     if (checked) {
       setLicenceCategories(prev => [...prev, cat]);
     } else {
@@ -429,7 +428,7 @@ export default function PersonnelComponent() {
           <div>
             <label className="admin-label mb-1">Permis / Catégories de Conduite Détenues</label>
             <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 border border-slate-300">
-              {(['VL', 'PL', 'SR', 'TC', 'PC', 'RE'] as VehicleCategory[]).map(cat => (
+              {(Object.keys(LICENCE_CATEGORY_LABELS) as LicenceCategory[]).map(cat => (
                 <label key={cat} className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700">
                   <input 
                     type="checkbox" 
@@ -571,7 +570,7 @@ export default function PersonnelComponent() {
           <div>
             <label className="admin-label mb-1">Permis / Catégories de Conduite Détenues</label>
             <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 border border-slate-300">
-              {(['VL', 'PL', 'SR', 'TC', 'PC', 'RE'] as VehicleCategory[]).map(cat => (
+              {(Object.keys(LICENCE_CATEGORY_LABELS) as LicenceCategory[]).map(cat => (
                 <label key={cat} className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700">
                   <input 
                     type="checkbox" 
