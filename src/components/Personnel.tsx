@@ -35,7 +35,7 @@ export default function PersonnelComponent() {
   // Form states
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
-  const [service, setService] = useState('Logistique');
+  const [service, setService] = useState('ETM');
   const [matricule, setMatricule] = useState('');
   const [grade, setGrade] = useState<Grade>('Soldat 2e classe');
   const [licenceCategories, setLicenceCategories] = useState<LicenceCategory[]>([]);
@@ -408,10 +408,11 @@ export default function PersonnelComponent() {
                 value={service}
                 onChange={e => setService(e.target.value)}
               >
-                <option value="Logistique">Logistique (BTC)</option>
-                <option value="Exploitation">Exploitation</option>
-                <option value="Maintenance">Maintenance Technique</option>
-                <option value="Administration">Administration des effectifs</option>
+                <option value="ETM">ETM : ESCADRON DE TRANSPORT MIXTE</option>
+                <option value="ECS">ECS : ESCADRON DE COMMANDEMENT ET DE SERVICES</option>
+                <option value="ET">ET : ESCADRON DE TRANSPORT</option>
+                <option value="ECR">ECR : ESCADRON DE CIRCULATION ROUTIERE</option>
+                <option value="EPC">EPC : ESCADRON DE PORTE-CHARS</option>
               </select>
             </div>
             <div>
@@ -524,10 +525,11 @@ export default function PersonnelComponent() {
                 value={service}
                 onChange={e => setService(e.target.value)}
               >
-                <option value="Logistique">Logistique (BTC)</option>
-                <option value="Exploitation">Exploitation</option>
-                <option value="Maintenance">Maintenance Technique</option>
-                <option value="Administration">Administration des effectifs</option>
+                <option value="ETM">ETM : ESCADRON DE TRANSPORT MIXTE</option>
+                <option value="ECS">ECS : ESCADRON DE COMMANDEMENT ET DE SERVICES</option>
+                <option value="ET">ET : ESCADRON DE TRANSPORT</option>
+                <option value="ECR">ECR : ESCADRON DE CIRCULATION ROUTIERE</option>
+                <option value="EPC">EPC : ESCADRON DE PORTE-CHARS</option>
               </select>
             </div>
             <div>

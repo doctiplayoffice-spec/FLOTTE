@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Vehicle } from '../models/Vehicle';
-import { Personnel } from '../models/Personnel';
+import { Personnel, PersonnelStatus } from '../models/Personnel';
 import { 
   onAuthStateChanged, 
   getCurrentUser, 
@@ -57,7 +57,7 @@ interface AppContextProps {
   updateVehicleData: (plate: string, v: Partial<Vehicle>) => Promise<void>;
   removeVehicle: (plate: string) => Promise<void>;
   
-  addNewStaff: (s: Omit<Personnel, 'id' | 'status'>) => Promise<any>;
+  addNewStaff: (s: Omit<Personnel, 'id' | 'status'> & { status?: PersonnelStatus }) => Promise<any>;
   updateStaffData: (id: string, s: Partial<Personnel>) => Promise<void>;
   removeStaff: (id: string) => Promise<void>;
 
@@ -183,10 +183,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Personnel CRUD
-  const addNewStaff = async (s: Omit<Personnel, 'id' | 'status'>) => {
+  const addNewStaff = async (s: Omit<Personnel, 'id' | 'status'> & { status?: PersonnelStatus }) => {
     const fresh = {
       ...s,
-      status: 'Présent' as const
+      status: s.status || ('Présent' as const)
     };
     return await addDoc('personnel', fresh);
   };

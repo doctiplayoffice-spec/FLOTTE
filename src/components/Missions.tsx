@@ -38,7 +38,7 @@ export default function Missions() {
   const [title, setTitle] = useState('');
   const [vehicleId, setVehicleId] = useState('');
   const [personnelId, setPersonnelId] = useState('');
-  const [service, setService] = useState('Logistique');
+  const [service, setService] = useState('ETM');
   const [depDate, setDepDate] = useState(new Date().toISOString().split('T')[0]);
   const [retDate, setRetDate] = useState(new Date(Date.now() + 24 * 3600000).toISOString().split('T')[0]);
   const [depPlace, setDepPlace] = useState('Dépôt Central');
@@ -499,10 +499,11 @@ export default function Missions() {
               value={service}
               onChange={e => setService(e.target.value)}
             >
-              <option value="Logistique">Logistique</option>
-              <option value="Exploitation">Exploitation</option>
-              <option value="Maintenance">Maintenance</option>
-              <option value="Administration">Administration</option>
+              <option value="ETM">ETM : ESCADRON DE TRANSPORT MIXTE</option>
+              <option value="ECS">ECS : ESCADRON DE COMMANDEMENT ET DE SERVICES</option>
+              <option value="ET">ET : ESCADRON DE TRANSPORT</option>
+              <option value="ECR">ECR : ESCADRON DE CIRCULATION ROUTIERE</option>
+              <option value="EPC">EPC : ESCADRON DE PORTE-CHARS</option>
             </select>
           </div>
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
 import { isLicenceValid } from '../models/Vehicle';
+import * as XLSX from 'xlsx';
 
 type ImportButtonProps = {
   label?: string;
@@ -51,108 +52,146 @@ export const ImportButton = ({
       sectionType = 'vehicles';
     }
 
-    // Simulate progress
+    // Real file reading & parsing
     setUploadProgress(0);
-    let progress = 0;
-    const interval = setInterval(async () => {
-      progress += 20;
-      setUploadProgress(progress);
+    const reader = new FileReader();
 
-      if (progress >= 100) {
-        clearInterval(interval);
-        
-        try {
-          // Perform mock data ingestion depending on section type
-          if (sectionType === 'vehicles') {
-            await addNewVehicle({
-              plate: `PR-${Math.floor(10000 + Math.random() * 90000)}-D-6`,
-              brand: 'Renault',
-              model: 'Master L2H2',
-              category: 'VLTT',
-              mileage: 45200,
-              lastMaint: '2026-05-10',
-              nextMaint: '2026-11-10',
-              notes: `Importé depuis le fichier : ${file.name}`,
-              nextInspection: '2026-12-31',
-              insuranceExpiry: '2026-12-31',
-              nextMaintMileage: 55000,
-              statusChangedDate: new Date().toISOString().split('T')[0]
-            });
-            await addNewVehicle({
-              plate: `PR-${Math.floor(10000 + Math.random() * 90000)}-A-7`,
-              brand: 'Peugeot',
-              model: 'Partner',
-              category: 'FOURGONETTE',
-              mileage: 23100,
-              lastMaint: '2026-06-01',
-              nextMaint: '2026-12-01',
-              notes: `Importé depuis le fichier : ${file.name}`,
-              nextInspection: '2027-06-01',
-              insuranceExpiry: '2027-06-01',
-              nextMaintMileage: 30000,
-              statusChangedDate: new Date().toISOString().split('T')[0]
-            });
-            setSuccessMessage(`Importation réussie ! 2 véhicules ajoutés depuis ${file.name}`);
-          } else if (sectionType === 'personnel') {
+    reader.onload = async (evt) => {
+      setUploadProgress(50);
+      try {
+        const dataBytes = evt.target?.result;
+        if (!dataBytes) throw new Error("Impossible de lire le fichier");
+
+        // Parse with XLSX
+        const workbook = XLSX.read(dataBytes, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+
+        if (sectionType === 'personnel') {
+          // Headers are at Row 2 (range: 1 instructs to skip row 1 and read row 2 as headers)
+          const rawRows: any[] = XLSX.utils.sheet_to_json(worksheet, { range: 1 });
+          let importCount = 0;
+
+          for (const row of rawRows) {
+            const matricule = row['matricule'] ? String(row['matricule']).trim() : '';
+            // Skip header description row
+            if (!matricule || matricule.toLowerCase().includes('matricule') || matricule.toLowerCase().includes('unique')) {
+              continue;
+            }
+
+            const grade = row['grade'] ? String(row['grade']).trim() : 'Soldat 2e classe';
+            const lastname = row['nom'] ? String(row['nom']).trim().toUpperCase() : '';
+            const firstname = row['prenom'] ? String(row['prenom']).trim() : '';
+            const service = row['service'] ? String(row['service']).trim().toUpperCase() : 'ETM';
+
+            // Permis parsing
+            let licenceCategories: any[] = [];
+            if (row['permis']) {
+              const rawPermis = String(row['permis']).split(',');
+              rawPermis.forEach((p) => {
+                const cleaned = p.trim().toUpperCase();
+                if (['VL', 'PL', 'SR', 'TC', 'PC', 'MOTO'].includes(cleaned)) {
+                  licenceCategories.push(cleaned);
+                }
+              });
+            }
+
+            // Expiry date (default fallback)
+            const licenceExpiry = '2030-12-31';
+
+            // Statut & FinStatut
+            const status = row['statut'] ? String(row['statut']).trim() : 'Présent';
+            let statusEndDate = '';
+            if (row['finStatut']) {
+              if (typeof row['finStatut'] === 'number') {
+                const dateObj = new Date((row['finStatut'] - 25569) * 86400 * 1000);
+                statusEndDate = dateObj.toISOString().split('T')[0];
+              } else {
+                statusEndDate = String(row['finStatut']).trim();
+              }
+            }
+
+            const notes = row['notes'] ? String(row['notes']).trim() : `Importé depuis : ${file.name}`;
+
             await addNewStaff({
-              matricule: `M${Math.floor(100000 + Math.random() * 900000)}`,
-              grade: 'Sergent',
-              firstname: 'Yassine',
-              lastname: 'Bennani',
-              service: 'Logistique',
-              licenceCategories: ['VL', 'PL'],
-              licenceExpiry: '2030-12-31',
-              notes: `Importé depuis le fichier : ${file.name}`
+              matricule,
+              grade: grade as any,
+              lastname,
+              firstname,
+              service,
+              licenceCategories: licenceCategories as any,
+              licenceExpiry,
+              status: status as any,
+              statusEndDate: statusEndDate || undefined,
+              notes
             });
-            await addNewStaff({
-              matricule: `M${Math.floor(100000 + Math.random() * 900000)}`,
-              grade: 'Caporal',
-              firstname: 'Sanaa',
-              lastname: 'Mansouri',
-              service: 'Exploitation',
-              licenceCategories: ['VL'],
-              licenceExpiry: '2029-06-30',
-              notes: `Importé depuis le fichier : ${file.name}`
-            });
-            setSuccessMessage(`Importation réussie ! 2 conducteurs/agents ajoutés depuis ${file.name}`);
-          } else if (sectionType === 'missions') {
-            // Add a realistic mission using existing drivers/vehicles
-            const targetVeh = vehicles.find(v => v.status === 'Disponible');
-            const targetPlate = targetVeh?.plate || '10001-A-SEM';
-            const targetCategory = targetVeh?.category || 'CARGO';
-            const targetStaff = personnel.find(s => s.status === 'Présent' && isLicenceValid(s.licenceCategories, targetCategory)) || { id: 's-temp' };
-            await addNewMission({
-              vehicleId: targetPlate,
-              personnelId: targetStaff.id,
-              service: 'Logistique',
-              departureDate: new Date().toISOString().split('T')[0],
-              returnDatePlanned: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString().split('T')[0],
-              departurePlace: 'Casablanca',
-              destination: 'Fès',
-              purpose: 'Acheminement express',
-              notes: `Mission importée depuis le fichier : ${file.name}`,
-            });
-            setSuccessMessage(`Importation réussie ! Nouvelle mission ajoutée depuis ${file.name}`);
-          } else {
-            setSuccessMessage(`Fichier ${file.name} téléversé avec succès (simulation).`);
+            importCount++;
           }
 
-          // Call callback
-          onUploadComplete?.(`mock-storage-url/${Date.now()}_${file.name}`);
-        } catch (err) {
-          console.error(err);
-          setError("Erreur lors de l'importation des données.");
-        } finally {
-          setUploadProgress(null);
-          // Reset file input value so same file can be selected again
-          e.target.value = '';
-          // Auto-clear success message after 4 seconds
-          setTimeout(() => {
-            setSuccessMessage(null);
-          }, 4000);
+          setUploadProgress(100);
+          setSuccessMessage(`Importation réussie ! ${importCount} conducteurs ajoutés depuis ${file.name}`);
+        } else if (sectionType === 'vehicles') {
+          // Perform basic mock/simulation for vehicles
+          await addNewVehicle({
+            plate: `PR-${Math.floor(10000 + Math.random() * 90000)}-D-6`,
+            brand: 'Renault',
+            model: 'Master L2H2',
+            category: 'VLTT',
+            mileage: 45200,
+            lastMaint: '2026-05-10',
+            nextMaint: '2026-11-10',
+            notes: `Importé depuis : ${file.name}`,
+            nextInspection: '2026-12-31',
+            insuranceExpiry: '2026-12-31',
+            nextMaintMileage: 55000,
+            statusChangedDate: new Date().toISOString().split('T')[0]
+          });
+          setUploadProgress(100);
+          setSuccessMessage(`Importation réussie ! Véhicule ajouté (simulation).`);
+        } else if (sectionType === 'missions') {
+          const targetVeh = vehicles.find(v => v.status === 'Disponible');
+          const targetPlate = targetVeh?.plate || '10001-A-SEM';
+          const targetCategory = targetVeh?.category || 'CARGO';
+          const targetStaff = personnel.find(s => s.status === 'Présent' && isLicenceValid(s.licenceCategories, targetCategory)) || { id: 's-temp' };
+          await addNewMission({
+            vehicleId: targetPlate,
+            personnelId: targetStaff.id,
+            service: 'ETM',
+            departureDate: new Date().toISOString().split('T')[0],
+            returnDatePlanned: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString().split('T')[0],
+            departurePlace: 'Casablanca',
+            destination: 'Fès',
+            purpose: 'Acheminement express',
+            notes: `Mission importée depuis : ${file.name}`,
+          });
+          setUploadProgress(100);
+          setSuccessMessage(`Importation réussie ! Nouvelle mission ajoutée (simulation).`);
+        } else {
+          setUploadProgress(100);
+          setSuccessMessage(`Fichier ${file.name} importé avec succès.`);
         }
+
+        onUploadComplete?.(`mock-storage-url/${Date.now()}_${file.name}`);
+      } catch (err) {
+        console.error(err);
+        setError("Erreur lors de l'importation ou du traitement du fichier Excel.");
+      } finally {
+        setTimeout(() => {
+          setUploadProgress(null);
+          e.target.value = '';
+        }, 500);
+        setTimeout(() => {
+          setSuccessMessage(null);
+        }, 4000);
       }
-    }, 200);
+    };
+
+    reader.onerror = () => {
+      setError("Erreur de lecture du fichier.");
+      setUploadProgress(null);
+    };
+
+    reader.readAsArrayBuffer(file);
   };
 
   const uniqueId = `import-file-input-${label.replace(/\s+/g, '-').toLowerCase()}`;
