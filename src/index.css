@@ -99,6 +99,17 @@
   border-color: #1e40af;
 }
 
+.admin-btn-orange {
+  background-color: #f97316; /* Orange 500 */
+  color: #ffffff;
+  border-color: #ea580c; /* Orange 600 */
+}
+
+.admin-btn-orange:hover {
+  background-color: #ea580c; /* Orange 600 */
+  border-color: #c2410c; /* Orange 700 */
+}
+
 .admin-btn-danger {
   background-color: #dc2626;
   color: #ffffff;

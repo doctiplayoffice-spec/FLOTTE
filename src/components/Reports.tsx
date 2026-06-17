@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Printer } from 'lucide-react';
+import { VEHICLE_CATEGORY_LABELS } from '../models/Vehicle';
 
 export default function Reports() {
   const { vehicles, missions, maintenance, personnel } = useApp();
@@ -224,7 +225,7 @@ export default function Reports() {
                     <tr key={v.plate}>
                       <td className="font-mono font-bold text-slate-800">{v.plate}</td>
                       <td className="font-semibold">{v.brand} {v.model}</td>
-                      <td>{v.type}</td>
+                      <td>{VEHICLE_CATEGORY_LABELS[v.category] || v.category}</td>
                       <td className="text-right font-mono font-semibold">{v.mileage.toLocaleString()} km</td>
                       <td className="font-mono">{v.lastMaint || '-'}</td>
                     </tr>

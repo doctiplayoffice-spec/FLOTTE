@@ -1,35 +1,13 @@
 // Mock Firestore Implementation with LocalStorage and Event Pub/Sub
 import { getCurrentUser } from './auth';
 
-export interface Vehicle {
-  id: string; // Used as Plate/Immatriculation in our app for uniqueness, or auto-generated
-  plate: string;
-  brand: string;
-  model: string;
-  type: string;
-  mileage: number;
-  status: 'Disponible' | 'En mission' | 'Maintenance' | 'Panne';
-  lastMaint: string;
-  nextMaint: string;
-  notes: string;
-  nextInspection: string;
-  insuranceExpiry: string;
-  nextMaintMileage: number;
-  statusChangedDate: string;
-}
-
-export interface Staff {
-  id: string;
-  firstname: string;
-  lastname: string;
-  service: string;
-  title: string;
-  status: 'Disponible' | 'Mission' | 'Congé' | 'Formation' | 'Maladie' | 'Atelier';
-}
+import { Vehicle } from '../models/Vehicle';
+import { Personnel } from '../models/Personnel';
 
 export interface Mission {
   id: string;
   num: string;
+  type?: string; // optional mission type
   vehicleId: string; // Reference to vehicle plate
   personnelId: string; // Reference to staff id
   service: string;
@@ -38,7 +16,7 @@ export interface Mission {
   departurePlace: string;
   destination: string;
   purpose: string;
-  status: 'En attente' | 'En cours' | 'Terminée' | 'Annulée';
+  status: 'Planifiée' | 'En cours' | 'Terminée' | 'Annulée';
   notes: string;
 }
 
@@ -92,7 +70,7 @@ const INITIAL_VEHICLES: Vehicle[] = [
     plate: '12345-A-6', 
     brand: 'Scania', 
     model: 'R500 V8', 
-    type: 'Poids Lourd', 
+    category: 'PL', 
     mileage: 124500, 
     status: 'Disponible', 
     lastMaint: '2026-05-15', 
@@ -108,7 +86,7 @@ const INITIAL_VEHICLES: Vehicle[] = [
     plate: '67890-B-26', 
     brand: 'Mercedes', 
     model: 'Sprinter 314', 
-    type: 'Fourgon', 
+    category: 'TC', 
     mileage: 89300, 
     status: 'En mission', 
     lastMaint: '2026-06-01', 
@@ -124,12 +102,13 @@ const INITIAL_VEHICLES: Vehicle[] = [
     plate: '11223-D-6', 
     brand: 'Iveco', 
     model: 'Daily 35S18', 
-    type: 'Fourgon', 
+    category: 'VL', 
     mileage: 154800, 
     status: 'Maintenance', 
+    motif: 'Injecteur défectueux cylindre 3',
     lastMaint: '2026-02-10', 
     nextMaint: '2026-06-10', 
-    notes: 'Injecteur défectueux cylindre 3',
+    notes: 'Remplacer rampe injection',
     nextInspection: '2026-08-01',
     insuranceExpiry: '2026-12-05',
     nextMaintMileage: 160000,
@@ -140,12 +119,13 @@ const INITIAL_VEHICLES: Vehicle[] = [
     plate: '44556-H-6', 
     brand: 'Renault', 
     model: 'Zoé E-Tech', 
-    type: 'Berline (Électrique)', 
+    category: 'VL', 
     mileage: 23100, 
     status: 'Panne', 
+    motif: 'Panne alternateur signalée par l\'équipe',
     lastMaint: '2026-04-18', 
     nextMaint: '2026-10-18', 
-    notes: 'Panne alternateur signalée par l\'équipe',
+    notes: 'Attente pièces de rechange',
     nextInspection: '2026-10-18',
     insuranceExpiry: '2026-10-18',
     nextMaintMileage: 30000,
@@ -153,11 +133,11 @@ const INITIAL_VEHICLES: Vehicle[] = [
   }
 ];
 
-const INITIAL_STAFF: Staff[] = [
-  { id: 's-1', firstname: 'Ahmed', lastname: 'Alami', service: 'Logistique', title: 'Chauffeur PL', status: 'Mission' },
-  { id: 's-2', firstname: 'Fatima', lastname: 'Zohra', service: 'Exploitation', title: 'Responsable Dépôt', status: 'Disponible' },
-  { id: 's-3', firstname: 'Rachid', lastname: 'Amrani', service: 'Logistique', title: 'Livreur VL', status: 'Disponible' },
-  { id: 's-4', firstname: 'Khadija', lastname: 'Bennani', service: 'Administration', title: 'Secrétaire de Flotte', status: 'Disponible' }
+const INITIAL_PERSONNEL: Personnel[] = [
+  { id: 's-1', matricule: 'M101293', grade: 'Adjudant', firstname: 'Ahmed', lastname: 'Alami', service: 'Logistique', status: 'En mission', licenceCategories: ['VL', 'PL', 'SR'] },
+  { id: 's-2', matricule: 'M991823', grade: 'Commandant', firstname: 'Fatima', lastname: 'Zohra', service: 'Exploitation', status: 'Présent', licenceCategories: ['VL'] },
+  { id: 's-3', matricule: 'M209381', grade: 'Caporal', firstname: 'Rachid', lastname: 'Amrani', service: 'Logistique', status: 'Présent', licenceCategories: ['VL', 'PL'] },
+  { id: 's-4', matricule: 'M492813', grade: 'Adjudant-chef', firstname: 'Khadija', lastname: 'Bennani', service: 'Administration', status: 'Présent', licenceCategories: ['VL'] }
 ];
 
 const INITIAL_MISSIONS: Mission[] = [
@@ -186,11 +166,11 @@ const getStore = <T>(key: string, initial: T[]): T[] => {
   try {
     const parsed = JSON.parse(data);
     // Schema migration/reset check:
-    if (key === 'fleet_db_vehicles' && parsed.length > 0 && (parsed[0].nextInspection === undefined || parsed[0].plate === 'AA-123-BB')) {
+    if (key === 'fleet_db_vehicles' && parsed.length > 0 && (parsed[0].category === undefined || parsed[0].plate === 'AA-123-BB')) {
       localStorage.setItem(key, JSON.stringify(initial));
       return initial;
     }
-    if (key === 'fleet_db_personnel' && parsed.length > 0 && (parsed.some((x: any) => x.status === 'Indisponible') || parsed.some((x: any) => x.firstname === 'Jean'))) {
+    if (key === 'fleet_db_personnel' && parsed.length > 0 && (parsed[0].grade === undefined || parsed.some((x: any) => x.status === 'Indisponible') || parsed.some((x: any) => x.firstname === 'Jean'))) {
       localStorage.setItem(key, JSON.stringify(initial));
       return initial;
     }
@@ -250,7 +230,7 @@ const addAuditLog = (action: string, target: string) => {
 // --- FIRESTORE APIS ---
 
 export const getVehicles = (): Vehicle[] => getStore('fleet_db_vehicles', INITIAL_VEHICLES);
-export const getPersonnel = (): Staff[] => getStore('fleet_db_personnel', INITIAL_STAFF);
+export const getPersonnel = (): Personnel[] => getStore('fleet_db_personnel', INITIAL_PERSONNEL);
 export const getMissions = (): Mission[] => getStore('fleet_db_missions', INITIAL_MISSIONS);
 export const getMaintenance = (): MaintenanceRecord[] => getStore('fleet_db_maintenance', INITIAL_MAINTENANCE);
 export const getActivityLogs = (): ActivityLog[] => getStore('fleet_db_activityLogs', INITIAL_LOGS);

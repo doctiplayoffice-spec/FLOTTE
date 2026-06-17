@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Vehicle } from '../models/Vehicle';
+import { Personnel } from '../models/Personnel';
 import { 
   onAuthStateChanged, 
   getCurrentUser, 
@@ -22,8 +24,6 @@ import {
   updateDoc, 
   deleteDoc, 
   onSnapshot,
-  Vehicle,
-  Staff,
   Mission,
   MaintenanceRecord,
   ActivityLog,
@@ -34,7 +34,7 @@ import {
 interface AppContextProps {
   user: User | null;
   vehicles: Vehicle[];
-  personnel: Staff[];
+  personnel: Personnel[];
   missions: Mission[];
   maintenance: MaintenanceRecord[];
   activityLogs: ActivityLog[];
@@ -57,8 +57,8 @@ interface AppContextProps {
   updateVehicleData: (plate: string, v: Partial<Vehicle>) => Promise<void>;
   removeVehicle: (plate: string) => Promise<void>;
   
-  addNewStaff: (s: Omit<Staff, 'id' | 'status'>) => Promise<any>;
-  updateStaffData: (id: string, s: Partial<Staff>) => Promise<void>;
+  addNewStaff: (s: Omit<Personnel, 'id' | 'status'>) => Promise<any>;
+  updateStaffData: (id: string, s: Partial<Personnel>) => Promise<void>;
   removeStaff: (id: string) => Promise<void>;
 
   addNewMission: (m: Omit<Mission, 'id' | 'num' | 'status'>) => Promise<any>;
@@ -90,7 +90,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   });
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [personnel, setPersonnel] = useState<Staff[]>([]);
+  const [personnel, setPersonnel] = useState<Personnel[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -183,15 +183,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Personnel CRUD
-  const addNewStaff = async (s: Omit<Staff, 'id' | 'status'>) => {
+  const addNewStaff = async (s: Omit<Personnel, 'id' | 'status'>) => {
     const fresh = {
       ...s,
-      status: 'Disponible' as const
+      status: 'Présent' as const
     };
     return await addDoc('personnel', fresh);
   };
 
-  const updateStaffData = async (id: string, s: Partial<Staff>) => {
+  const updateStaffData = async (id: string, s: Partial<Personnel>) => {
     await updateDoc('personnel', id, s);
   };
 
@@ -206,7 +206,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const fresh = {
       ...m,
       num: missionNum,
-      status: 'En attente' as const
+      status: 'Planifiée' as const
     };
     return await addDoc('missions', fresh);
   };
@@ -219,7 +219,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           status: 'En mission',
           statusChangedDate: new Date().toISOString().split('T')[0]
         });
-        await updateDoc('personnel', activeMission.personnelId, { status: 'Mission' });
+        await updateDoc('personnel', activeMission.personnelId, { status: 'En mission' });
       }
     }
     await updateDoc('missions', id, m);
@@ -234,7 +234,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       mileage: returnMileage,
       statusChangedDate: new Date().toISOString().split('T')[0]
     });
-    await updateDoc('personnel', mission.personnelId, { status: 'Disponible' });
+    await updateDoc('personnel', mission.personnelId, { status: 'Présent' });
     await updateDoc('missions', id, { 
       status, 
       notes: notes || mission.notes 

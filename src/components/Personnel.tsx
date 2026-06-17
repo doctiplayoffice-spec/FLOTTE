@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ImportButton } from './ImportButton';
 import { useApp } from '../context/AppContext';
 import { 
   Plus, 
@@ -7,8 +8,10 @@ import {
   Edit2
 } from 'lucide-react';
 import Modal from './common/Modal';
+import { Grade, GRADES_RANKS, GRADES_OFFICERS, PersonnelStatus } from '../models/Personnel';
+import { VehicleCategory } from '../models/Vehicle';
 
-export default function Personnel() {
+export default function PersonnelComponent() {
   const { 
     personnel, 
     addNewStaff, 
@@ -34,24 +37,38 @@ export default function Personnel() {
   const [firstname, setFirstname] = useState('');
   const [lastname, setLastname] = useState('');
   const [service, setService] = useState('Logistique');
-  const [title, setTitle] = useState('');
-  const [status, setStatus] = useState<any>('Disponible');
+  const [matricule, setMatricule] = useState('');
+  const [grade, setGrade] = useState<Grade>('Soldat 2e classe');
+  const [licenceCategories, setLicenceCategories] = useState<VehicleCategory[]>([]);
+  const [licenceExpiry, setLicenceExpiry] = useState('');
+  const [status, setStatus] = useState<PersonnelStatus>('Présent');
+  const [statusEndDate, setStatusEndDate] = useState('');
+  const [notes, setNotes] = useState('');
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstname || !lastname || !title) return;
+    if (!firstname || !lastname || !matricule || !grade) return;
 
     await addNewStaff({
       firstname,
       lastname,
       service,
-      title
+      matricule: matricule.toUpperCase().trim(),
+      grade,
+      licenceCategories,
+      licenceExpiry: licenceExpiry || undefined,
+      statusEndDate: statusEndDate || undefined,
+      notes: notes || undefined
     });
 
     setFirstname('');
     setLastname('');
-    setTitle('');
-    setStatus('Disponible');
+    setMatricule('');
+    setGrade('Soldat 2e classe');
+    setLicenceCategories([]);
+    setLicenceExpiry('');
+    setStatusEndDate('');
+    setNotes('');
     setIsAddOpen(false);
   };
 
@@ -60,8 +77,13 @@ export default function Personnel() {
     setFirstname(s.firstname);
     setLastname(s.lastname);
     setService(s.service);
-    setTitle(s.title);
-    setStatus(s.status);
+    setMatricule(s.matricule || '');
+    setGrade(s.grade || 'Soldat 2e classe');
+    setLicenceCategories(s.licenceCategories || []);
+    setLicenceExpiry(s.licenceExpiry || '');
+    setStatus(s.status || 'Présent');
+    setStatusEndDate(s.statusEndDate || '');
+    setNotes(s.notes || '');
     setIsEditOpen(true);
   };
 
@@ -73,12 +95,21 @@ export default function Personnel() {
       firstname,
       lastname,
       service,
-      title,
-      status
+      matricule: matricule.toUpperCase().trim(),
+      grade,
+      licenceCategories,
+      licenceExpiry: licenceExpiry || undefined,
+      status,
+      statusEndDate: (status === 'Présent' || status === 'En mission') ? undefined : (statusEndDate || undefined),
+      notes: notes || undefined
     });
 
     setIsEditOpen(false);
     setEditingStaff(null);
+    setLicenceCategories([]);
+    setLicenceExpiry('');
+    setStatusEndDate('');
+    setNotes('');
   };
 
   const handleSort = (field: string) => {
@@ -90,12 +121,21 @@ export default function Personnel() {
     }
   };
 
+  const handleLicenceCheckboxChange = (cat: VehicleCategory, checked: boolean) => {
+    if (checked) {
+      setLicenceCategories(prev => [...prev, cat]);
+    } else {
+      setLicenceCategories(prev => prev.filter(c => c !== cat));
+    }
+  };
+
   // Filter
   const filtered = personnel.filter(p => {
     const fullName = `${p.firstname} ${p.lastname}`.toLowerCase();
     const matchesSearch = fullName.includes(searchTerm.toLowerCase()) || 
                           p.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          p.title.toLowerCase().includes(searchTerm.toLowerCase());
+                          p.grade.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (p.matricule && p.matricule.toLowerCase().includes(searchTerm.toLowerCase()));
     
     if (statusFilter === 'All') return matchesSearch;
     return matchesSearch && p.status === statusFilter;
@@ -124,7 +164,7 @@ export default function Personnel() {
     return sortDirection === 'asc' ? ' ▲' : ' ▼';
   };
 
-  const staffStatuses = ['Disponible', 'Mission', 'Congé', 'Formation', 'Maladie', 'Atelier'];
+  const staffStatuses: PersonnelStatus[] = ['Présent', 'En mission', 'Permission', 'Congé', 'Maladie', 'Formation'];
 
   return (
     <div className="space-y-4">
@@ -132,7 +172,7 @@ export default function Personnel() {
       {/* Title */}
       <div className="border-b border-slate-300 pb-2">
         <h2 className="text-lg font-bold text-slate-800 uppercase tracking-tight">
-          REGISTRE DES AGENTS ET CHAUFFEURS
+          REGISTRE MILITAIRE DES AGENTS ET CHAUFFEURS (BTC)
         </h2>
       </div>
 
@@ -144,7 +184,7 @@ export default function Personnel() {
             <Search className="absolute left-2.5 text-slate-400" size={14} />
             <input 
               type="text" 
-              placeholder="Rechercher par nom, service..."
+              placeholder="Rechercher par nom, grade, matricule..."
               className="admin-input pl-8 w-60"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
@@ -169,12 +209,15 @@ export default function Personnel() {
 
         {/* Add staff CTA */}
         {canWrite() && (
-          <button 
-            onClick={() => setIsAddOpen(true)}
-            className="admin-btn admin-btn-primary font-bold text-xs"
-          >
-            <Plus size={14} className="mr-1" /> Enregistrer un agent
-          </button>
+          <div className="flex items-center gap-2">
+            <ImportButton label="Importer les conducteurs" />
+            <button 
+              onClick={() => setIsAddOpen(true)}
+              className="admin-btn admin-btn-primary font-bold text-xs"
+            >
+              <Plus size={14} className="mr-1" /> Enregistrer un agent
+            </button>
+          </div>
         )}
       </div>
 
@@ -183,21 +226,23 @@ export default function Personnel() {
         <table className="admin-table min-w-full">
           <thead>
             <tr>
-              <th onClick={() => handleSort('lastname')} className="cursor-pointer select-none text-left">
-                Nom{getSortIcon('lastname')}
+              <th onClick={() => handleSort('matricule')} className="cursor-pointer select-none text-left w-24">
+                Matricule{getSortIcon('matricule')}
               </th>
-              <th onClick={() => handleSort('firstname')} className="cursor-pointer select-none text-left">
-                Prénom{getSortIcon('firstname')}
+              <th onClick={() => handleSort('grade')} className="cursor-pointer select-none text-left w-36">
+                Grade{getSortIcon('grade')}
+              </th>
+              <th onClick={() => handleSort('lastname')} className="cursor-pointer select-none text-left">
+                Nom & Prénom{getSortIcon('lastname')}
               </th>
               <th onClick={() => handleSort('service')} className="cursor-pointer select-none text-left">
-                Unité / Service{getSortIcon('service')}
+                Service / Unité{getSortIcon('service')}
               </th>
-              <th onClick={() => handleSort('title')} className="cursor-pointer select-none text-left">
-                Fonction{getSortIcon('title')}
-              </th>
+              <th className="text-left w-36">Permis détenus</th>
               <th onClick={() => handleSort('status')} className="cursor-pointer select-none text-left w-40">
-                Statut d'activité{getSortIcon('status')}
+                Statut journalier{getSortIcon('status')}
               </th>
+              <th className="text-left w-28">Fin indispo.</th>
               {canWrite() && <th className="text-center w-28">Actions</th>}
             </tr>
           </thead>
@@ -205,31 +250,56 @@ export default function Personnel() {
             {sorted.length > 0 ? (
               sorted.map(p => (
                 <tr key={p.id}>
-                  <td className="font-bold text-slate-800">{p.lastname.toUpperCase()}</td>
-                  <td className="font-semibold text-slate-700">{p.firstname}</td>
+                  <td className="font-mono font-bold text-slate-800">{p.matricule || '-'}</td>
+                  <td className="font-semibold text-slate-700">{p.grade}</td>
+                  <td className="font-bold text-slate-900">{p.lastname.toUpperCase()} {p.firstname}</td>
                   <td>{p.service}</td>
-                  <td>{p.title}</td>
+                  <td>
+                    <div className="flex flex-wrap gap-1">
+                      {p.licenceCategories && p.licenceCategories.length > 0 ? (
+                        p.licenceCategories.map((cat: string) => (
+                          <span key={cat} className="px-1 bg-slate-200 text-slate-700 font-mono text-[9px] font-extrabold border border-slate-300 rounded-sm">
+                            {cat}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-slate-400 text-[10px] italic">Aucun</span>
+                      )}
+                    </div>
+                  </td>
                   <td>
                     {/* Inline instant selector (1-2 click change) */}
                     <select
                       value={p.status}
                       disabled={!canWrite()}
                       onChange={async (e) => {
-                        await updateStaffData(p.id, { status: e.target.value as any });
+                        const newStatus = e.target.value as PersonnelStatus;
+                        let newEndDate = p.statusEndDate || '';
+                        if (newStatus !== 'Présent' && newStatus !== 'En mission') {
+                          const ed = prompt(`Saisir la date de fin prévue (YYYY-MM-DD) pour "${newStatus}" (optionnel) :`, p.statusEndDate || '');
+                          if (ed === null) return; // cancel change
+                          newEndDate = ed;
+                        } else {
+                          newEndDate = '';
+                        }
+                        await updateStaffData(p.id, { status: newStatus, statusEndDate: newEndDate });
                       }}
-                      className={`text-xs font-bold py-1 px-1.5 border border-slate-350 outline-none w-full ${
-                        p.status === 'Disponible' ? 'bg-emerald-100 text-emerald-800' :
-                        p.status === 'Mission' ? 'bg-amber-100 text-amber-800' :
-                        p.status === 'Congé' ? 'bg-blue-100 text-blue-800' :
-                        p.status === 'Formation' ? 'bg-purple-100 text-purple-800' :
-                        p.status === 'Maladie' ? 'bg-rose-105 text-rose-800 bg-rose-50' :
-                        'bg-slate-100 text-slate-700'
+                      className={`text-xs font-bold py-1 px-1.5 border border-slate-350 outline-none w-full rounded-sm ${
+                        p.status === 'Présent' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                        p.status === 'En mission' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                        p.status === 'Permission' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                        p.status === 'Congé' ? 'bg-indigo-100 text-indigo-800 border-indigo-300' :
+                        p.status === 'Maladie' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                        'bg-purple-100 text-purple-800 border-purple-300' /* Formation */
                       }`}
                     >
                       {staffStatuses.map(st => (
                         <option key={st} value={st}>{st}</option>
                       ))}
                     </select>
+                  </td>
+                  <td className="font-mono text-slate-600 text-[11px]">
+                    {p.statusEndDate && p.status !== 'Présent' && p.status !== 'En mission' ? p.statusEndDate : '-'}
                   </td>
                   {canWrite() && (
                     <td className="text-center">
@@ -261,7 +331,7 @@ export default function Personnel() {
               ))
             ) : (
               <tr>
-                <td colSpan={canWrite() ? 6 : 5} className="text-center text-slate-500 py-8">
+                <td colSpan={canWrite() ? 8 : 7} className="text-center text-slate-500 py-8">
                   Aucun agent répertorié.
                 </td>
               </tr>
@@ -300,29 +370,87 @@ export default function Personnel() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="admin-label">Service / Unité</label>
+              <label className="admin-label">Matricule Militaire *</label>
+              <input 
+                type="text" 
+                required 
+                placeholder="e.g. M101293" 
+                className="admin-input"
+                value={matricule}
+                onChange={e => setMatricule(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="admin-label">Grade Militaire</label>
+              <select 
+                className="admin-input"
+                value={grade}
+                onChange={e => setGrade(e.target.value as Grade)}
+              >
+                <optgroup label="Sous-officiers & Rangs">
+                  {GRADES_RANKS.map(gr => (
+                    <option key={gr} value={gr}>{gr}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Officiers">
+                  {GRADES_OFFICERS.map(go => (
+                    <option key={go} value={go}>{go}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="admin-label">Service / Unité d'affectation</label>
               <select 
                 className="admin-input"
                 value={service}
                 onChange={e => setService(e.target.value)}
               >
-                <option value="Logistique">Logistique</option>
+                <option value="Logistique">Logistique (BTC)</option>
                 <option value="Exploitation">Exploitation</option>
-                <option value="Maintenance">Maintenance</option>
-                <option value="Administration">Administration</option>
+                <option value="Maintenance">Maintenance Technique</option>
+                <option value="Administration">Administration des effectifs</option>
               </select>
             </div>
             <div>
-              <label className="admin-label">Fonction *</label>
+              <label className="admin-label">Date Expiry Permis (optionnelle)</label>
               <input 
-                type="text" 
-                required 
-                placeholder="e.g. Chauffeur PL" 
+                type="date" 
                 className="admin-input"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
+                value={licenceExpiry}
+                onChange={e => setLicenceExpiry(e.target.value)}
               />
             </div>
+          </div>
+
+          <div>
+            <label className="admin-label mb-1">Permis / Catégories de Conduite Détenues</label>
+            <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 border border-slate-300">
+              {(['VL', 'PL', 'SR', 'TC', 'PC', 'RE'] as VehicleCategory[]).map(cat => (
+                <label key={cat} className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700">
+                  <input 
+                    type="checkbox" 
+                    checked={licenceCategories.includes(cat)}
+                    onChange={e => handleLicenceCheckboxChange(cat, e.target.checked)}
+                    className="accent-blue-800"
+                  />
+                  <span>{cat}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="admin-label">Notes / Observation</label>
+            <textarea 
+              placeholder="e.g. Apte service continu, permis VL et PL à jour." 
+              className="admin-input min-h-[50px] font-sans"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+            />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
@@ -360,41 +488,110 @@ export default function Personnel() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="admin-label">Service / Unité</label>
+              <label className="admin-label">Matricule Militaire (non modifiable)</label>
+              <input 
+                type="text" 
+                disabled 
+                className="admin-input bg-slate-100 cursor-not-allowed text-slate-500 font-mono font-bold"
+                value={matricule}
+              />
+            </div>
+            <div>
+              <label className="admin-label">Grade Militaire</label>
+              <select 
+                className="admin-input"
+                value={grade}
+                onChange={e => setGrade(e.target.value as Grade)}
+              >
+                <optgroup label="Sous-officiers & Rangs">
+                  {GRADES_RANKS.map(gr => (
+                    <option key={gr} value={gr}>{gr}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Officiers">
+                  {GRADES_OFFICERS.map(go => (
+                    <option key={go} value={go}>{go}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="admin-label">Service / Unité d'affectation</label>
               <select 
                 className="admin-input"
                 value={service}
                 onChange={e => setService(e.target.value)}
               >
-                <option value="Logistique">Logistique</option>
+                <option value="Logistique">Logistique (BTC)</option>
                 <option value="Exploitation">Exploitation</option>
-                <option value="Maintenance">Maintenance</option>
-                <option value="Administration">Administration</option>
+                <option value="Maintenance">Maintenance Technique</option>
+                <option value="Administration">Administration des effectifs</option>
               </select>
             </div>
             <div>
-              <label className="admin-label">Fonction *</label>
+              <label className="admin-label">Date Expiry Permis (optionnelle)</label>
               <input 
-                type="text" 
-                required 
+                type="date" 
                 className="admin-input"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
+                value={licenceExpiry}
+                onChange={e => setLicenceExpiry(e.target.value)}
               />
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="admin-label">Statut journalier *</label>
+              <select 
+                className="admin-input"
+                value={status}
+                onChange={e => setStatus(e.target.value as PersonnelStatus)}
+              >
+                {staffStatuses.map(st => (
+                  <option key={st} value={st}>{st}</option>
+                ))}
+              </select>
+            </div>
+            {(status !== 'Présent' && status !== 'En mission') && (
+              <div>
+                <label className="admin-label">Fin d'indisponibilité prévue</label>
+                <input 
+                  type="date" 
+                  className="admin-input"
+                  value={statusEndDate}
+                  onChange={e => setStatusEndDate(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
           <div>
-            <label className="admin-label">Statut d'activité / Disponibilité *</label>
-            <select 
-              className="admin-input"
-              value={status}
-              onChange={e => setStatus(e.target.value)}
-            >
-              {staffStatuses.map(st => (
-                <option key={st} value={st}>{st}</option>
+            <label className="admin-label mb-1">Permis / Catégories de Conduite Détenues</label>
+            <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 border border-slate-300">
+              {(['VL', 'PL', 'SR', 'TC', 'PC', 'RE'] as VehicleCategory[]).map(cat => (
+                <label key={cat} className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700">
+                  <input 
+                    type="checkbox" 
+                    checked={licenceCategories.includes(cat)}
+                    onChange={e => handleLicenceCheckboxChange(cat, e.target.checked)}
+                    className="accent-blue-800"
+                  />
+                  <span>{cat}</span>
+                </label>
               ))}
-            </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="admin-label">Observation / Notes</label>
+            <textarea 
+              className="admin-input min-h-[50px] font-sans"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+            />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

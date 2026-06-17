@@ -98,7 +98,7 @@ export default function MobileDriverApp() {
   const [mileageError, setMileageError] = useState('');
 
   // ── Derived data ──
-  const activeMissions = missions.filter(m => m.status === 'En cours' || m.status === 'En attente');
+  const activeMissions = missions.filter(m => m.status === 'En cours' || m.status === 'Planifiée');
 
   // Auto-select single active mission
   useEffect(() => {

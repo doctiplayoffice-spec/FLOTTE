@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { ImportButton } from './ImportButton';
 import { 
   Plus, 
   Search, 
@@ -7,6 +8,7 @@ import {
   Edit2
 } from 'lucide-react';
 import Modal from './common/Modal';
+import { VehicleCategory, VEHICLE_CATEGORY_LABELS, VehicleStatus, Vehicle } from '../models/Vehicle';
 
 export default function Vehicles() {
   const { 
@@ -20,7 +22,7 @@ export default function Vehicles() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [typeFilter, setTypeFilter] = useState('All');
+  const [categoryFilter, setCategoryFilter] = useState('All');
   
   // Sorting state
   const [sortField, setSortField] = useState('plate');
@@ -35,7 +37,7 @@ export default function Vehicles() {
   const [plate, setPlate] = useState('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
-  const [type, setType] = useState('Fourgon');
+  const [category, setCategory] = useState<VehicleCategory>('VL');
   const [mileage, setMileage] = useState('');
   const [lastMaint, setLastMaint] = useState('');
   const [nextMaint, setNextMaint] = useState('');
@@ -43,6 +45,8 @@ export default function Vehicles() {
   const [insuranceExpiry, setInsuranceExpiry] = useState('');
   const [nextMaintMileage, setNextMaintMileage] = useState('');
   const [notes, setNotes] = useState('');
+  const [status, setStatus] = useState<VehicleStatus>('Disponible');
+  const [motif, setMotif] = useState('');
 
   // Handle addition
   const handleAddSubmit = async (e: React.FormEvent) => {
@@ -53,7 +57,7 @@ export default function Vehicles() {
       plate: plate.toUpperCase().trim(),
       brand,
       model,
-      type,
+      category,
       mileage: parseInt(mileage) || 0,
       lastMaint: lastMaint || new Date().toISOString().split('T')[0],
       nextMaint: nextMaint || new Date(Date.now() + 180 * 24 * 3600000).toISOString().split('T')[0],
@@ -75,6 +79,7 @@ export default function Vehicles() {
     setNextInspection('');
     setInsuranceExpiry('');
     setNextMaintMileage('');
+    setCategory('VL');
     setIsAddOpen(false);
   };
 
@@ -84,7 +89,7 @@ export default function Vehicles() {
     setPlate(v.plate);
     setBrand(v.brand);
     setModel(v.model);
-    setType(v.type);
+    setCategory(v.category);
     setMileage(v.mileage.toString());
     setLastMaint(v.lastMaint || '');
     setNextMaint(v.nextMaint || '');
@@ -92,6 +97,8 @@ export default function Vehicles() {
     setNextInspection(v.nextInspection || '');
     setInsuranceExpiry(v.insuranceExpiry || '');
     setNextMaintMileage(v.nextMaintMileage ? v.nextMaintMileage.toString() : '');
+    setStatus(v.status || 'Disponible');
+    setMotif(v.motif || '');
     setIsEditOpen(true);
   };
 
@@ -103,14 +110,16 @@ export default function Vehicles() {
     await updateVehicleData(editingVehicle.plate, {
       brand,
       model,
-      type,
+      category,
       mileage: parseInt(mileage) || 0,
       lastMaint,
       nextMaint,
       notes,
       nextInspection,
       insuranceExpiry,
-      nextMaintMileage: parseInt(nextMaintMileage) || 0
+      nextMaintMileage: parseInt(nextMaintMileage) || 0,
+      status,
+      motif: status !== 'Disponible' ? motif : ''
     });
 
     setIsEditOpen(false);
@@ -118,6 +127,7 @@ export default function Vehicles() {
     setNextInspection('');
     setInsuranceExpiry('');
     setNextMaintMileage('');
+    setMotif('');
   };
 
   // Handle Column Header click
@@ -136,8 +146,8 @@ export default function Vehicles() {
                           v.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           v.model.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || v.status === statusFilter;
-    const matchesType = typeFilter === 'All' || v.type === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
+    const matchesCategory = categoryFilter === 'All' || v.category === categoryFilter;
+    return matchesSearch && matchesStatus && matchesCategory;
   });
 
   // Sort
@@ -157,9 +167,6 @@ export default function Vehicles() {
     if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
     return 0;
   });
-
-  // Unique types for filtering
-  const vehicleTypes = ['All', 'Poids Lourd', 'Fourgon', 'Voiture Légère', 'Berline administrative'];
 
   const getSortIcon = (field: string) => {
     if (sortField !== field) return '';
@@ -207,17 +214,17 @@ export default function Vehicles() {
             </select>
           </div>
 
-          {/* Type Select Filter */}
+          {/* Category Select Filter */}
           <div className="flex items-center gap-1">
             <span className="text-[11px] font-bold text-slate-500 uppercase">Catégorie :</span>
             <select
               className="admin-input py-1 px-2 text-xs w-44"
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
             >
               <option value="All">-- Toutes les catégories --</option>
-              {vehicleTypes.filter(t => t !== 'All').map(t => (
-                <option key={t} value={t}>{t}</option>
+              {(['VL', 'PL', 'SR', 'TC', 'PC', 'RE'] as VehicleCategory[]).map(cat => (
+                <option key={cat} value={cat}>{VEHICLE_CATEGORY_LABELS[cat]}</option>
               ))}
             </select>
           </div>
@@ -225,12 +232,15 @@ export default function Vehicles() {
 
         {/* Action Button */}
         {canWrite() && (
-          <button 
-            onClick={() => setIsAddOpen(true)}
-            className="admin-btn admin-btn-primary font-bold text-xs"
-          >
-            <Plus size={14} className="mr-1" /> Ajouter véhicule
-          </button>
+          <div className="flex items-center gap-2">
+            <ImportButton label="Importer les véhicules" />
+            <button 
+              onClick={() => setIsAddOpen(true)}
+              className="admin-btn admin-btn-primary font-bold text-xs"
+            >
+              <Plus size={14} className="mr-1" /> Ajouter véhicule
+            </button>
+          </div>
         )}
       </div>
 
@@ -239,14 +249,14 @@ export default function Vehicles() {
         <table className="admin-table min-w-full">
           <thead>
             <tr>
-              <th onClick={() => handleSort('plate')} className="cursor-pointer select-none text-left">
-                Immatriculation{getSortIcon('plate')}
+              <th onClick={() => handleSort('plate')} className="cursor-pointer select-none text-left w-24">
+                Plaque{getSortIcon('plate')}
               </th>
               <th onClick={() => handleSort('brand')} className="cursor-pointer select-none text-left">
                 Marque / Modèle{getSortIcon('brand')}
               </th>
-              <th onClick={() => handleSort('type')} className="cursor-pointer select-none text-left">
-                Catégorie{getSortIcon('type')}
+              <th onClick={() => handleSort('category')} className="cursor-pointer select-none text-left">
+                Catégorie{getSortIcon('category')}
               </th>
               <th onClick={() => handleSort('mileage')} className="cursor-pointer select-none text-right">
                 Kilométrage{getSortIcon('mileage')}
@@ -271,14 +281,14 @@ export default function Vehicles() {
           </thead>
           <tbody>
             {sorted.length > 0 ? (
-              sorted.map(v => (
+              sorted.map((v: Vehicle) => (
                 <tr key={v.plate}>
                   <td className="font-mono font-bold text-slate-900">{v.plate}</td>
                   <td>
                     <div className="font-semibold text-slate-800">{v.brand} {v.model}</div>
                     {v.notes && <div className="text-[10px] text-slate-400 italic font-normal">Obs: {v.notes}</div>}
                   </td>
-                  <td>{v.type}</td>
+                  <td>{VEHICLE_CATEGORY_LABELS[v.category] || v.category}</td>
                   <td className="text-right font-mono font-semibold">{v.mileage.toLocaleString()} km</td>
                   <td>{v.lastMaint || '-'}</td>
                   <td>
@@ -295,13 +305,22 @@ export default function Vehicles() {
                       value={v.status}
                       disabled={!canWrite()}
                       onChange={async (e) => {
-                        await updateVehicleData(v.plate, { status: e.target.value as any });
+                        const newStatus = e.target.value as VehicleStatus;
+                        let newMotif = v.motif || '';
+                        if (newStatus !== 'Disponible') {
+                          const m = prompt(`Veuillez entrer le motif pour le statut "${newStatus}" :`, v.motif || '');
+                          if (m === null) return; // cancel click
+                          newMotif = m;
+                        } else {
+                          newMotif = '';
+                        }
+                        await updateVehicleData(v.plate, { status: newStatus, motif: newMotif });
                       }}
-                      className={`text-xs font-bold py-1 px-1.5 border border-slate-350 outline-none w-full ${
-                        v.status === 'Disponible' ? 'bg-emerald-100 text-emerald-800' :
-                        v.status === 'En mission' ? 'bg-amber-100 text-amber-800 bg-amber-50' :
-                        v.status === 'Maintenance' ? 'bg-rose-100 text-rose-800' :
-                        'bg-red-800 text-white font-bold' /* Panne in dark red */
+                      className={`text-xs font-bold py-1 px-1.5 border border-slate-350 outline-none w-full rounded-sm ${
+                        v.status === 'Disponible' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                        v.status === 'En mission' ? 'bg-amber-100 text-amber-800 bg-amber-50 border-amber-300' :
+                        v.status === 'Maintenance' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                        'bg-red-750 text-white font-bold border-red-800' /* Panne */
                       }`}
                     >
                       <option value="Disponible">Disponible</option>
@@ -309,6 +328,11 @@ export default function Vehicles() {
                       <option value="Maintenance">Maintenance</option>
                       <option value="Panne">Panne</option>
                     </select>
+                    {v.status !== 'Disponible' && v.motif && (
+                      <div className="text-[10px] text-slate-500 italic mt-0.5 max-w-[150px] truncate" title={v.motif}>
+                        Motif : {v.motif}
+                      </div>
+                    )}
                   </td>
                   {canWrite() && (
                     <td className="text-center">
@@ -324,7 +348,7 @@ export default function Vehicles() {
                           <button 
                             onClick={async () => {
                               if (confirm(`Confirmer la suppression du véhicule ${v.plate} ?`)) {
-                                await removeVehicle(v.plate);
+                                  await removeVehicle(v.plate);
                               }
                             }}
                             title="Supprimer"
@@ -368,13 +392,12 @@ export default function Vehicles() {
               <label className="admin-label">Catégorie</label>
               <select 
                 className="admin-input"
-                value={type}
-                onChange={e => setType(e.target.value)}
+                value={category}
+                onChange={e => setCategory(e.target.value as VehicleCategory)}
               >
-                <option value="Poids Lourd">Poids Lourd</option>
-                <option value="Fourgon">Fourgon</option>
-                <option value="Voiture Légère">Voiture Légère</option>
-                <option value="Berline administrative">Berline administrative</option>
+                {(Object.keys(VEHICLE_CATEGORY_LABELS) as VehicleCategory[]).map(cat => (
+                  <option key={cat} value={cat}>{VEHICLE_CATEGORY_LABELS[cat]}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -502,13 +525,12 @@ export default function Vehicles() {
               <label className="admin-label">Catégorie</label>
               <select 
                 className="admin-input"
-                value={type}
-                onChange={e => setType(e.target.value)}
+                value={category}
+                onChange={e => setCategory(e.target.value as VehicleCategory)}
               >
-                <option value="Poids Lourd">Poids Lourd</option>
-                <option value="Fourgon">Fourgon</option>
-                <option value="Voiture Légère">Voiture Légère</option>
-                <option value="Berline administrative">Berline administrative</option>
+                {(Object.keys(VEHICLE_CATEGORY_LABELS) as VehicleCategory[]).map(cat => (
+                  <option key={cat} value={cat}>{VEHICLE_CATEGORY_LABELS[cat]}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -536,15 +558,44 @@ export default function Vehicles() {
             </div>
           </div>
 
-          <div>
-            <label className="admin-label">Kilométrage (km)</label>
-            <input 
-              type="number" 
-              className="admin-input"
-              value={mileage}
-              onChange={e => setMileage(e.target.value)}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="admin-label">Statut</label>
+              <select 
+                className="admin-input"
+                value={status}
+                onChange={e => setStatus(e.target.value as VehicleStatus)}
+              >
+                <option value="Disponible">Disponible</option>
+                <option value="En mission">En mission</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Panne">Panne</option>
+              </select>
+            </div>
+            <div>
+              <label className="admin-label">Kilométrage (km)</label>
+              <input 
+                type="number" 
+                className="admin-input"
+                value={mileage}
+                onChange={e => setMileage(e.target.value)}
+              />
+            </div>
           </div>
+
+          {status !== 'Disponible' && (
+            <div>
+              <label className="admin-label">Motif d'indisponibilité *</label>
+              <input 
+                type="text" 
+                required
+                placeholder="Indiquer la raison (ex: Alternateur défectueux...)"
+                className="admin-input"
+                value={motif}
+                onChange={e => setMotif(e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>

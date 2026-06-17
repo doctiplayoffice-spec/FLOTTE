@@ -33,7 +33,7 @@ export default function Dashboard() {
   const ongoingMissions = missions.filter(m => m.status === 'En cours');
   const completedMissionsCount = missions.filter(m => m.status === 'Terminée').length;
   const missionsTodayCount = missions.filter(m => m.departureDate === '2026-06-13').length;
-  const availableStaffCount = personnel.filter(p => p.status === 'Disponible').length;
+  const availableStaffCount = personnel.filter(p => p.status === 'Présent').length;
 
   const pendingAlerts = maintenance.filter(m => m.status === 'Prévue' || m.status === 'En cours');
 

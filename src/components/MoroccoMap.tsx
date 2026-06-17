@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { ImportButton } from './ImportButton';
 
 // Fix Leaflet default icon paths broken by Vite asset bundling
 import markerIconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -59,6 +60,17 @@ export default function MoroccoMap() {
         Carte du Maroc
       </div>
       <div ref={mapRef} style={{ height: '500px', width: '100%' }} />
+      {/* Bouton d’import orange */}
+      <div className="mt-4 flex justify-center">
+        <ImportButton label="Importer des cartes" buttonClass="bg-orange-500 hover:bg-orange-600" onUploadComplete={url => console.log('Map file URL:', url)} />
+      </div>
+      {/* Import button for Word, PDF, Excel files */}
+      <div className="mt-4 flex justify-center">
+        <ImportButton
+          label="Add document"
+          onUploadComplete={url => console.log('Uploaded file URL:', url)}
+        />
+      </div>
     </div>
   );
 }

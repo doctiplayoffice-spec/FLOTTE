@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ImportButton } from './ImportButton';
 import { useApp } from '../context/AppContext';
 import { 
   Plus, 
@@ -7,6 +8,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import Modal from './common/Modal';
+import { MOROCCAN_CITIES } from '../models/Cities';
 
 export default function Missions() {
   const { 
@@ -40,6 +42,8 @@ export default function Missions() {
   const [retDate, setRetDate] = useState(new Date(Date.now() + 24 * 3600000).toISOString().split('T')[0]);
   const [depPlace, setDepPlace] = useState('Dépôt Central');
   const [dest, setDest] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
+  const [customDest, setCustomDest] = useState('');
   const [notes, setNotes] = useState('');
   const [err, setErr] = useState('');
 
@@ -50,7 +54,14 @@ export default function Missions() {
 
   // Dropdown options
   const availableVehicles = vehicles.filter(v => v.status === 'Disponible');
-  const availableStaff = personnel.filter(p => p.status === 'Disponible');
+  const availableStaff = personnel.filter(p => p.status === 'Présent');
+
+  // Filter staff by selected vehicle's licence category
+  const selectedVehicle = vehicles.find(v => v.plate === vehicleId);
+  const eligibleStaff = availableStaff.filter(p => {
+    if (!selectedVehicle) return true;
+    return p.licenceCategories && p.licenceCategories.includes(selectedVehicle.category);
+  });
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +70,14 @@ export default function Missions() {
     if (!title || !vehicleId || !personnelId || !dest) {
       setErr("Veuillez remplir tous les champs obligatoires.");
       return;
+    }
+
+    const selectedDriver = personnel.find(p => p.id === personnelId);
+    if (selectedVehicle && selectedDriver) {
+      if (!selectedDriver.licenceCategories || !selectedDriver.licenceCategories.includes(selectedVehicle.category)) {
+        setErr(`L'agent sélectionné ne possède pas le permis requis (${selectedVehicle.category}) pour conduire ce véhicule.`);
+        return;
+      }
     }
 
     try {
@@ -79,6 +98,8 @@ export default function Missions() {
       setVehicleId('');
       setPersonnelId('');
       setDest('');
+      setSelectedCity('');
+      setCustomDest('');
       setNotes('');
       setIsAddOpen(false);
     } catch (err) {
@@ -165,7 +186,7 @@ export default function Missions() {
 
   const getStaffName = (id: string) => {
     const s = personnel.find(p => p.id === id);
-    return s ? `${s.firstname} ${s.lastname}` : 'Inconnu';
+    return s ? `${s.grade} ${s.lastname} ${s.firstname}` : 'Inconnu';
   };
 
   const getVehicleDesc = (plate: string) => {
@@ -212,7 +233,7 @@ export default function Missions() {
               onChange={e => setStatusFilter(e.target.value)}
             >
               <option value="All">-- Toutes les missions --</option>
-              <option value="En attente">En attente</option>
+              <option value="Planifiée">Planifiée</option>
               <option value="En cours">En cours</option>
               <option value="Terminée">Terminée</option>
               <option value="Annulée">Annulée</option>
@@ -222,12 +243,15 @@ export default function Missions() {
 
         {/* Add CTA */}
         {canWrite() && (
-          <button 
-            onClick={() => setIsAddOpen(true)}
-            className="admin-btn admin-btn-primary font-bold text-xs"
-          >
-            <Plus size={14} className="mr-1" /> Lancer une mission
-          </button>
+          <div className="flex items-center gap-2">
+            <ImportButton label="Importer les missions" />
+            <button 
+              onClick={() => setIsAddOpen(true)}
+              className="admin-btn admin-btn-primary font-bold text-xs"
+            >
+              <Plus size={14} className="mr-1" /> Lancer une mission
+            </button>
+          </div>
         )}
       </div>
 
@@ -269,7 +293,7 @@ export default function Missions() {
           <tbody>
             {sorted.length > 0 ? (
               sorted.map(m => {
-                const isPending = m.status === 'En attente';
+                const isPending = m.status === 'Planifiée';
                 const isActive = m.status === 'En cours';
 
                 return (
@@ -288,7 +312,7 @@ export default function Missions() {
                     <td>{m.returnDatePlanned}</td>
                     <td>
                       <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                        m.status === 'En attente' ? 'bg-slate-100 text-slate-600 border border-slate-300' :
+                        m.status === 'Planifiée' ? 'bg-slate-100 text-slate-600 border border-slate-300' :
                         m.status === 'En cours' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                         m.status === 'Terminée' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
                         'bg-rose-100 text-rose-800 border border-rose-300'
@@ -364,14 +388,42 @@ export default function Missions() {
             </div>
             <div>
               <label className="admin-label">Destination *</label>
-              <input 
-                type="text" 
-                placeholder="e.g. Dépôt de Casablanca"
-                className="admin-input" 
+              <select 
+                className="admin-input"
                 required
-                value={dest}
-                onChange={e => setDest(e.target.value)}
-              />
+                value={selectedCity}
+                onChange={e => {
+                  const val = e.target.value;
+                  setSelectedCity(val);
+                  if (val === '__custom__') {
+                    setDest(customDest);
+                  } else {
+                    setDest(val);
+                  }
+                }}
+              >
+                <option value="">-- Choisir une ville --</option>
+                {MOROCCAN_CITIES.map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+                <option value="__custom__">-- Autre (Saisie manuellement) --</option>
+              </select>
+
+              {selectedCity === '__custom__' && (
+                <div className="mt-2 animate-fadeIn">
+                  <input 
+                    type="text" 
+                    placeholder="Saisir la destination (ex: Dépôt de Casablanca)"
+                    className="admin-input" 
+                    required
+                    value={customDest}
+                    onChange={e => {
+                      setCustomDest(e.target.value);
+                      setDest(e.target.value);
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -403,7 +455,7 @@ export default function Missions() {
                 className="admin-input"
                 required
                 value={vehicleId}
-                onChange={e => setVehicleId(e.target.value)}
+                onChange={e => { setVehicleId(e.target.value); setPersonnelId(''); setErr(''); }}
               >
                 <option value="">-- Choisir --</option>
                 {availableVehicles.map(v => (
@@ -416,7 +468,7 @@ export default function Missions() {
             </div>
 
             <div>
-              <label className="admin-label">Agent Disponible *</label>
+              <label className="admin-label">Agent Habilité *</label>
               <select 
                 className="admin-input"
                 required
@@ -424,13 +476,17 @@ export default function Missions() {
                 onChange={e => setPersonnelId(e.target.value)}
               >
                 <option value="">-- Choisir --</option>
-                {availableStaff.map(p => (
-                  <option key={p.id} value={p.id}>{p.firstname} {p.lastname} ({p.title})</option>
+                {eligibleStaff.map(p => (
+                  <option key={p.id} value={p.id}>{p.grade} {p.lastname} {p.firstname} (Permis: {p.licenceCategories?.join(', ') || 'aucun'})</option>
                 ))}
               </select>
-              {availableStaff.length === 0 && (
+              {availableStaff.length === 0 ? (
                 <span className="text-[10px] text-rose-500 mt-1 block">Aucun agent disponible !</span>
-              )}
+              ) : selectedVehicle && eligibleStaff.length === 0 ? (
+                <span className="text-[10px] text-rose-500 mt-1 block font-bold animate-pulse">
+                  ⚠ Aucun agent disponible ne possède le permis {selectedVehicle.category} requis !
+                </span>
+              ) : null}
             </div>
           </div>
 
@@ -463,7 +519,7 @@ export default function Missions() {
             <button 
               type="submit" 
               className="admin-btn admin-btn-primary" 
-              disabled={availableVehicles.length === 0 || availableStaff.length === 0}
+              disabled={availableVehicles.length === 0 || eligibleStaff.length === 0}
             >
               Enregistrer la mission
             </button>

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { ShieldAlert } from 'lucide-react';
+import { VehicleCategory, VEHICLE_CATEGORY_LABELS } from '../models/Vehicle';
+import { MOROCCAN_CITIES } from '../models/Cities';
 
 export default function QuickActions() {
   const { 
@@ -28,6 +30,8 @@ export default function QuickActions() {
   const [desc, setDesc] = useState('');
   const [driverId, setDriverId] = useState('');
   const [destination, setDestination] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
+  const [customDest, setCustomDest] = useState('');
   const [odometer, setOdometer] = useState('');
   const [purpose, setPurpose] = useState('');
   
@@ -35,7 +39,7 @@ export default function QuickActions() {
   const [addVehPlate, setAddVehPlate] = useState('');
   const [addVehBrand, setAddVehBrand] = useState('');
   const [addVehModel, setAddVehModel] = useState('');
-  const [addVehType, setAddVehType] = useState('Fourgon');
+  const [addVehType, setAddVehType] = useState<VehicleCategory>('VL');
   const [addVehMileage, setAddVehMileage] = useState('');
 
   const triggerSuccess = (msg: string) => {
@@ -47,6 +51,8 @@ export default function QuickActions() {
     setDesc('');
     setDriverId('');
     setDestination('');
+    setSelectedCity('');
+    setCustomDest('');
     setOdometer('');
     setPurpose('');
     setAddVehPlate('');
@@ -125,6 +131,10 @@ export default function QuickActions() {
       const selectedDriver = personnel.find(p => p.id === driverId);
       if (!selectedVeh || !selectedDriver) return triggerError("Erreur ressources.");
 
+      if (!selectedDriver.licenceCategories || !selectedDriver.licenceCategories.includes(selectedVeh.category)) {
+        return triggerError(`L'agent sélectionné ne possède pas le permis requis (${selectedVeh.category}) pour ce véhicule.`);
+      }
+
       const newM = await addNewMission({
         vehicleId: plate,
         personnelId: driverId,
@@ -139,7 +149,7 @@ export default function QuickActions() {
 
       await updateMissionData(newM.id, { status: 'En cours' });
       await updateVehicleData(plate, { status: 'En mission' });
-      await updateStaffData(driverId, { status: 'Mission' });
+      await updateStaffData(driverId, { status: 'En mission' });
 
       triggerSuccess(`Mission créée et lancée. Véhicule ${plate} et chauffeur ${selectedDriver.firstname} affectés.`);
     } catch (err: any) {
@@ -179,7 +189,7 @@ export default function QuickActions() {
         plate: addVehPlate,
         brand: addVehBrand,
         model: addVehModel,
-        type: addVehType,
+        category: addVehType,
         mileage: parseInt(addVehMileage) || 0,
         lastMaint: new Date().toISOString().split('T')[0],
         nextMaint: new Date(Date.now() + 180 * 24 * 3600000).toISOString().split('T')[0],
@@ -212,7 +222,7 @@ export default function QuickActions() {
   const availableVehicles = vehicles.filter(v => v.status === 'Disponible');
   const activeMissionVehicles = vehicles.filter(v => v.status === 'En mission');
   const maintenanceOrBrokenVehicles = vehicles.filter(v => v.status === 'Maintenance' || v.status === 'Panne');
-  const availableStaff = personnel.filter(p => p.status === 'Disponible');
+  const availableStaff = personnel.filter(p => p.status === 'Présent');
 
   return (
     <div className="space-y-4">
@@ -322,8 +332,12 @@ export default function QuickActions() {
                   onChange={e => setDriverId(e.target.value)}
                 >
                   <option value="">-- Choisir --</option>
-                  {availableStaff.map(p => (
-                    <option key={p.id} value={p.id}>{p.firstname} {p.lastname} ({p.title})</option>
+                  {availableStaff.filter(p => {
+                    const selVeh = vehicles.find(v => v.plate === plate);
+                    if (!selVeh) return true;
+                    return p.licenceCategories && p.licenceCategories.includes(selVeh.category);
+                  }).map(p => (
+                    <option key={p.id} value={p.id}>{p.grade} {p.lastname} {p.firstname} (Permis: {p.licenceCategories?.join(', ') || 'aucun'})</option>
                   ))}
                 </select>
               </div>
@@ -331,14 +345,42 @@ export default function QuickActions() {
 
             <div>
               <label className="admin-label">Destination *</label>
-              <input 
-                type="text" 
+              <select 
                 className="admin-input"
-                placeholder="e.g. Casablanca Centre"
                 required
-                value={destination}
-                onChange={e => setDestination(e.target.value)}
-              />
+                value={selectedCity}
+                onChange={e => {
+                  const val = e.target.value;
+                  setSelectedCity(val);
+                  if (val === '__custom__') {
+                    setDestination(customDest);
+                  } else {
+                    setDestination(val);
+                  }
+                }}
+              >
+                <option value="">-- Choisir une ville --</option>
+                {MOROCCAN_CITIES.map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+                <option value="__custom__">-- Autre (Saisie manuellement) --</option>
+              </select>
+
+              {selectedCity === '__custom__' && (
+                <div className="mt-2 animate-fadeIn">
+                  <input 
+                    type="text" 
+                    placeholder="Saisir la destination (ex: Casablanca Centre)"
+                    className="admin-input" 
+                    required
+                    value={customDest}
+                    onChange={e => {
+                      setCustomDest(e.target.value);
+                      setDestination(e.target.value);
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="pt-2">
@@ -531,11 +573,11 @@ export default function QuickActions() {
                 <select 
                   className="admin-input"
                   value={addVehType}
-                  onChange={e => setAddVehType(e.target.value)}
+                  onChange={e => setAddVehType(e.target.value as any)}
                 >
-                  <option value="Poids Lourd">Poids Lourd</option>
-                  <option value="Fourgon">Fourgon</option>
-                  <option value="Voiture Légère">Voiture Légère</option>
+                  {Object.entries(VEHICLE_CATEGORY_LABELS).map(([cat, label]) => (
+                    <option key={cat} value={cat}>{label} ({cat})</option>
+                  ))}
                 </select>
               </div>
             </div>
